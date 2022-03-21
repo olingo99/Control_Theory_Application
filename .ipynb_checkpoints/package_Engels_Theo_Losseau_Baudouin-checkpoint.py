@@ -33,7 +33,7 @@ def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha =
             MVP.append(PVInit)
         #print("ici")
     else:
-        print("la")
+        #print("la")
         e  = (SP[-1]-PV[-1])
         E.append(e)
         temp_mvp = Kc*e
