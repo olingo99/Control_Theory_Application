@@ -2,8 +2,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 from IPython.display import display, clear_output
-
-import package_DBR
+from package_DBR import Delay_RT,FO_RT, Bode, Processes
 
 def Lead_Lag_Discreet_RT(MV,PV,Tlead,Tlag,Ts,Kp=1,method='EBD',PVInit = 0):
     K = Ts/Tlag
@@ -12,21 +11,19 @@ def Lead_Lag_Discreet_RT(MV,PV,Tlead,Tlag,Ts,Kp=1,method='EBD',PVInit = 0):
     else: # MV[k+1] is MV[-1] and MV[k] is MV[-2]
         if method == 'EBD':
             PV.append((1/(1+K))*PV[-1] + (K*Kp/(1+K))*((1+(Tlead/Ts))*MV[-1]-(Tlead/Ts)*MV[-2]))
-        elif method == 'EFD':
-            PV.append((1-K)*PV[-1] + K*Kp*MV[-2])
-        elif method == 'TRAP':
-            PV.append((1/(2*T+Ts))*((2*T-Ts)*PV[-1] + Kp*Ts*(MV[-1] + MV[-2])))            
-        else:
-            PV.append((1/(1+K))*PV[-1] + (K*Kp/(1+K))*MV[-1])
+        # elif method == 'EFD':
+        #     PV.append((1-K)*PV[-1] + K*Kp*MV[-2])
+        # elif method == 'TRAP':
+        #     PV.append((1/(2*T+Ts))*((2*T-Ts)*PV[-1] + Kp*Ts*(MV[-1] + MV[-2])))            
+        # else:
+        #     PV.append((1/(1+K))*PV[-1] + (K*Kp/(1+K))*MV[-1])
             
 def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha = 0.4,ManFF=False,PVInit = 0,method = "EBD-EBD"):
     Tfd = alpha*Td
     
-    if Man:
-        pass
     if len(MVI) == 0 or len(MVD)==0 or len(MVP)==0:
         if len(MVI) == 0:    
-            MVI.append(PVInit)
+            MVI.append(PVInit)  # metter a 0 seulememnt si ca marche pas
         if len(MVD) == 0:
             MVD.append(PVInit)
         if len(MVP) == 0:
@@ -40,6 +37,9 @@ def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha =
         MVP.append(temp_mvp)
         temp_mvi = MVI[-1]+Kc*(Ts/Ti)*e
         temp_mvd = (Tfd/(Tfd+Ts))*MVD[-1]+(Kc*Td/(Tfd+Ts))*(e-E[-2])
+        #print(MVD[-1])
+        #print(e)
+        #print(E[-1])
         MVD.append(temp_mvd)
         if temp_mvp+temp_mvi+temp_mvd>MVMax:  
             MVI.append(MVMax-temp_mvp-temp_mvd)
@@ -47,4 +47,57 @@ def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha =
             MVI.append(MVMin-temp_mvp-temp_mvd)
         else:
             MVI.append(temp_mvi)
-        MV.append(MVP[-1]+MVI[-1]+MVD[-1])
+        if Man[-1] and ManFF:
+            MV.append(MVMan[-1]-MVFF[-1])
+        elif Man[-1] and not(ManFF):
+            MV.append(MVMan[-1])
+        elif ManFF:
+            MV.append(MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1])
+        else:
+             MV.append(MVP[-1]+MVI[-1]+MVD[-1])
+        
+        
+        
+def FF_RT(DV,DV0,Tlead1,Tlag1,Tlead2,Tlag2,Theta1,Theta2,Kp,Kd,Ts,MVFF,PV1,PV2):
+    #New_DV = [x-DV0 for x in DV]
+    Lead_Lag_Discreet_RT(DV,PV1,Tlead1,Tlag1,Ts,Kp=(Kd/Kp))
+    Lead_Lag_Discreet_RT(PV1,PV2,Tlead2,Tlag2,Ts)
+    Delay_RT(PV2,max(0,Theta2-Theta1),Ts,MVFF)
+
+    
+def sim_tclabP(MV,PV,Ts,PVtemp1,PVtemp2):
+    
+    FO_RT(MV,0.395,47.83,Ts,PVtemp1)
+    FO_RT(PVtemp1,1,17.39,Ts,PVtemp2)
+    Delay_RT(PVtemp2,9.3138,Ts,PV)
+    
+def sim_tclabD(MV,PV,Ts,DV0,DVtemp1,DVtemp2):
+
+    FO_RT(MV,0.6347,245.357,Ts,DVtemp1)
+    FO_RT(DVtemp1,1,3.133,Ts,DVtemp2)
+    Delay_RT(DVtemp2,0.559,Ts,PV)
+    
+    
+def IMC_Tuning_SOPDT(Kp,T1,T2,theta,gamma):
+    Tclp=gamma * T1
+    Kc=Kp*((T1+T2)/(Tclp+theta))
+    Ti=(T1+T2)
+    Td= T1*T2/T1+T2
+    return (Kc,Ti,Td)
+
+
+def margins(P,C):
+    omega = np.logspace(-2, 2, 10000)
+    PC = Bode(P,omega,Show = False)*Bode(C,omega,Show = False)
+    Bode(PC,omega)
+
+    
+class PID:
+    
+    def __init__(self, parameters):
+        
+        self.parameters = parameters
+        self.parameters['Kc'] = parameters['Kc'] if 'Kc' in parameters else 1.0
+        self.parameters['Ti'] = parameters['Ti'] if 'Ti' in parameters else 1.0
+        self.parameters['Td'] = parameters['Td'] if 'Td'in parameters else 10
+        self.parameters['alpha'] = parameters['alpha'] if 'alpha' in parameters else 0.4
