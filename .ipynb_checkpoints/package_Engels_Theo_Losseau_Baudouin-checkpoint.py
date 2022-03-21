@@ -31,7 +31,7 @@ def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha =
             MVD.append(PVInit)
         if len(MVP) == 0:
             MVP.append(PVInit)
-        print("ici")
+        #print("ici")
     else:
         print("la")
         e  = (SP[-1]-PV[-1])
