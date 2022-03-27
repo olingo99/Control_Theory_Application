@@ -2,7 +2,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 from IPython.display import display, clear_output
-from package_DBR import Delay_RT,FO_RT, Bode, Processes
+from package_DBR import Delay_RT,FO_RT, Bode, Process
 
 def Lead_Lag_Discreet_RT(MV,PV,Tlead,Tlag,Ts,Kp=1,method='EBD',PVInit = 0):
     K = Ts/Tlag
@@ -91,6 +91,42 @@ def margins(P,C):
     PC = Bode(P,omega,Show = False)*Bode(C,omega,Show = False)
     Bode(PC,omega)
 
+
+def bodePID(C,omega,Show = True):
+    s = 1j*omega
+    
+    PGain = C.parameters['Kc']*np.ones_like(s)
+    PI = 1/(C.parameters['Ti']*s)
+    PP = np.ones_like(s)
+    PD = (C.parameters['Td']*s)/((C.parameters['alpha']*C.parameters['Td']*s)+1)
+    
+    Ps = np.multiply(PGain,(PI+PP+PD))
+    if Show == True:
+    
+        fig, (ax_gain, ax_phase) = plt.subplots(2,1)
+        fig.set_figheight(12)
+        fig.set_figwidth(22)
+
+        # Gain part
+        ax_gain.semilogx(omega,20*np.log10(np.abs(Ps)),label='P(s)') 
+        gain_min = np.min(20*np.log10(np.abs(Ps)/5))
+        gain_max = np.max(20*np.log10(np.abs(Ps)*5))
+        ax_gain.set_xlim([np.min(omega), np.max(omega)])
+        ax_gain.set_ylim([gain_min, gain_max])
+        ax_gain.set_ylabel('Amplitude |P| [db]')
+        ax_gain.set_title('Bode plot of P')
+        ax_gain.legend(loc='best')
+    
+        # Phase part
+        ax_phase.semilogx(omega, (180/np.pi)*np.unwrap(np.angle(Ps)),label='P(s)')  
+        ax_phase.set_xlim([np.min(omega), np.max(omega)])
+        ph_min = np.min((180/np.pi)*np.unwrap(np.angle(Ps))) - 10
+        ph_max = np.max((180/np.pi)*np.unwrap(np.angle(Ps))) + 10
+        ax_phase.set_ylim([np.max([ph_min, -200]), ph_max])
+        ax_phase.set_ylabel(r'Phase $\angle P$ [°]')
+        ax_phase.legend(loc='best')
+    else:
+        return Ps
     
 class PID:
     
