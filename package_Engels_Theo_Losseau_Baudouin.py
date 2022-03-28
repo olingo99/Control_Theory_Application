@@ -159,10 +159,26 @@ def bodePC(P,C,omega,Show = True):
         return Ps
 
     
+    
+def find_nearest_index(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx    
+    
+    
 def Margin(P,C,omega,Show = True):
     Ps = bodePC(P,C,omega,Show=False)
     
     
+    PsGain = 20*np.log10(np.abs(Ps))
+    PsPhase = (180/np.pi)*np.unwrap(np.angle(Ps))
+    
+    F_PhaseMargin = omega[find_nearest_index(PsGain,0)]
+    F_GainMargin = omega[find_nearest_index(PsPhase,-180)]
+    
+    
+    GainMargin = np.abs(PsGain[find_nearest_index(PsPhase,-180)])
+    PhaseMargin = 180+PsPhase[find_nearest_index(PsGain,0)]
     if Show == True:
     
         fig, (ax_gain, ax_phase) = plt.subplots(2,1)
@@ -170,8 +186,9 @@ def Margin(P,C,omega,Show = True):
         fig.set_figwidth(22)
 
         # Gain part
-        ax_gain.semilogx(omega,20*np.log10(np.abs(Ps)),label='PC(s)')
-        ax_gain.plot(omega,np.zeros_like(omega))
+        ax_gain.semilogx(omega,PsGain,label='PC(s)')
+        ax_gain.plot(omega,np.zeros_like(omega),'black')
+        ax_gain.vlines(F_GainMargin,PsGain[find_nearest_index(PsPhase,-180)],0)
         gain_min = np.min(20*np.log10(np.abs(Ps)/5))
         gain_max = np.max(20*np.log10(np.abs(Ps)*5))
         ax_gain.set_xlim([np.min(omega), np.max(omega)])
@@ -181,16 +198,24 @@ def Margin(P,C,omega,Show = True):
         ax_gain.legend(loc='best')
     
         # Phase part
-        ax_phase.semilogx(omega, (180/np.pi)*np.unwrap(np.angle(Ps)),label='PC(s)')  
+        ax_phase.semilogx(omega, PsPhase,label='PC(s)')  
         ax_phase.set_xlim([np.min(omega), np.max(omega)])
-        ax_phase.plot(omega,-180*np.ones_like(omega))
+        ax_phase.vlines(F_PhaseMargin,-180,PsPhase[find_nearest_index(PsGain,0)])
+        ax_phase.plot(omega,-180*np.ones_like(omega),'black')
         ph_min = np.min((180/np.pi)*np.unwrap(np.angle(Ps))) - 10
         ph_max = np.max((180/np.pi)*np.unwrap(np.angle(Ps))) + 10
         ax_phase.set_ylim([np.max([ph_min, -200]), ph_max])
         ax_phase.set_ylabel(r'Phase $\angle PC$ [°]')
         ax_phase.legend(loc='best')
+        
+        
+        
+        print(GainMargin)
+        print(PhaseMargin)
     else:
-        return Ps
+        return GainMargin,PhaseMargin
+    
+
     
     
 class PID:
