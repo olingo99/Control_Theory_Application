@@ -18,44 +18,78 @@ def Lead_Lag_Discreet_RT(MV,PV,Tlead,Tlag,Ts,Kp=1,method='EBD',PVInit = 0):
         # else:
         #     PV.append((1/(1+K))*PV[-1] + (K*Kp/(1+K))*MV[-1])
             
+# def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha = 0.4,ManFF=False,PVInit = 0,method = "EBD-EBD"):
+#     Tfd = alpha*Td
+    
+#     if len(MVI) == 0 or len(MVD)==0 or len(MVP)==0:
+#         if len(MVI) == 0:    
+#             MVI.append(PVInit)  # metter a 0 seulememnt si ca marche pas
+#         if len(MVD) == 0:
+#             MVD.append(PVInit)
+#         if len(MVP) == 0:
+#             MVP.append(PVInit)
+#         #print("ici")
+#     else:
+#         #print("la")
+#         e  = (SP[-1]-PV[-1])
+#         E.append(e)
+#         temp_mvp = Kc*e
+#         MVP.append(temp_mvp)
+#         temp_mvi = MVI[-1]+Kc*(Ts/Ti)*e
+#         temp_mvd = (Tfd/(Tfd+Ts))*MVD[-1]+(Kc*Td/(Tfd+Ts))*(e-E[-2])
+#         #print(MVD[-1])
+#         #print(e)
+#         #print(E[-1])
+#         MVD.append(temp_mvd)
+#         if temp_mvp+temp_mvi+temp_mvd>MVMax:  
+#             MVI.append(MVMax-temp_mvp-temp_mvd)
+#         elif temp_mvp+temp_mvi+temp_mvd<MVMin:
+#             MVI.append(MVMin-temp_mvp-temp_mvd)
+#         else:
+#             MVI.append(temp_mvi)
+#         if Man[-1] and ManFF:
+#             MV.append(MVMan[-1]-MVFF[-1])
+#         elif Man[-1] and not(ManFF):
+#             MV.append(MVMan[-1])
+#         elif ManFF:
+#             MV.append(MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1])
+#         else:
+#              MV.append(MVP[-1]+MVI[-1]+MVD[-1])
+        
+        
+
 def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha = 0.4,ManFF=False,PVInit = 0,method = "EBD-EBD"):
     Tfd = alpha*Td
     
-    if len(MVI) == 0 or len(MVD)==0 or len(MVP)==0:
-        if len(MVI) == 0:    
-            MVI.append(PVInit)  # metter a 0 seulememnt si ca marche pas
-        if len(MVD) == 0:
-            MVD.append(PVInit)
-        if len(MVP) == 0:
-            MVP.append(PVInit)
-        #print("ici")
+    if len(PV) == 0:
+        PV.append(PVInit)
+    e  = (SP[-1]-PV[-1])
+    E.append(e)
+    
+    if len(MVI) == 0:
+        MVI.append(Kc*(Ts/Ti)*e)
     else:
-        #print("la")
-        e  = (SP[-1]-PV[-1])
-        E.append(e)
-        temp_mvp = Kc*e
-        MVP.append(temp_mvp)
-        temp_mvi = MVI[-1]+Kc*(Ts/Ti)*e
-        temp_mvd = (Tfd/(Tfd+Ts))*MVD[-1]+(Kc*Td/(Tfd+Ts))*(e-E[-2])
-        #print(MVD[-1])
-        #print(e)
-        #print(E[-1])
-        MVD.append(temp_mvd)
-        if temp_mvp+temp_mvi+temp_mvd>MVMax:  
-            MVI.append(MVMax-temp_mvp-temp_mvd)
-        elif temp_mvp+temp_mvi+temp_mvd<MVMin:
-            MVI.append(MVMin-temp_mvp-temp_mvd)
-        else:
-            MVI.append(temp_mvi)
-        if Man[-1] and ManFF:
-            MV.append(MVMan[-1]-MVFF[-1])
-        elif Man[-1] and not(ManFF):
-            MV.append(MVMan[-1])
-        elif ManFF:
-            MV.append(MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1])
-        else:
-             MV.append(MVP[-1]+MVI[-1]+MVD[-1])
-        
+        MVI.append(MVI[-1]+Kc*(Ts/Ti)*e)
+    if len(MVD) == 0:
+        MVD.append(0)
+    else:
+        MVD.append((Tfd/(Tfd+Ts))*MVD[-1]+(Kc*Td/(Tfd+Ts))*(e-E[-2]))
+    MVP.append(Kc*e)
+
+    if MVP[-1]+MVI[-1]+MVD[-1]>MVMax:  
+        MVI[-1] = MVMax-MVP[-1]-MVD[-1]
+    elif MVP[-1]+MVI[-1]+MVD[-1]<MVMin:
+        MVI[-1] = MVMin-MVP[-1]-MVD[-1]
+    if Man[-1]:
+        MVI[-1] = MVMan[-1]-MVP[-1]
+    if Man[-1] and ManFF:
+        MV.append(MVMan[-1]-MVFF[-1])
+    elif Man[-1] and not(ManFF):
+        MV.append(MVMan[-1])
+    elif ManFF:
+        MV.append(MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1])
+    else:
+        MV.append(MVP[-1]+MVI[-1]+MVD[-1])        
         
         
 def FF_RT(DV,DV0,Tlead1,Tlag1,Tlead2,Tlag2,Theta1,Theta2,Kp,Kd,Ts,MVFF,PV1,PV2):
