@@ -108,25 +108,90 @@ def bodePID(C,omega,Show = True):
         fig.set_figwidth(22)
 
         # Gain part
-        ax_gain.semilogx(omega,20*np.log10(np.abs(Ps)),label='P(s)') 
+        ax_gain.semilogx(omega,20*np.log10(np.abs(Ps)),label='C(s)') 
         gain_min = np.min(20*np.log10(np.abs(Ps)/5))
         gain_max = np.max(20*np.log10(np.abs(Ps)*5))
         ax_gain.set_xlim([np.min(omega), np.max(omega)])
         ax_gain.set_ylim([gain_min, gain_max])
-        ax_gain.set_ylabel('Amplitude |P| [db]')
-        ax_gain.set_title('Bode plot of P')
+        ax_gain.set_ylabel('Amplitude |C| [db]')
+        ax_gain.set_title('Bode plot of C')
         ax_gain.legend(loc='best')
     
         # Phase part
-        ax_phase.semilogx(omega, (180/np.pi)*np.unwrap(np.angle(Ps)),label='P(s)')  
+        ax_phase.semilogx(omega, (180/np.pi)*np.unwrap(np.angle(Ps)),label='C(s)')  
         ax_phase.set_xlim([np.min(omega), np.max(omega)])
         ph_min = np.min((180/np.pi)*np.unwrap(np.angle(Ps))) - 10
         ph_max = np.max((180/np.pi)*np.unwrap(np.angle(Ps))) + 10
         ax_phase.set_ylim([np.max([ph_min, -200]), ph_max])
-        ax_phase.set_ylabel(r'Phase $\angle P$ [°]')
+        ax_phase.set_ylabel(r'Phase $\angle C$ [°]')
         ax_phase.legend(loc='best')
     else:
         return Ps
+    
+    
+def bodePC(P,C,omega,Show = True):
+    Ps = np.multiply(Bode(P,omega,Show = False),bodePID(C,omega,Show = False))
+    if Show == True:
+    
+        fig, (ax_gain, ax_phase) = plt.subplots(2,1)
+        fig.set_figheight(12)
+        fig.set_figwidth(22)
+
+        # Gain part
+        ax_gain.semilogx(omega,20*np.log10(np.abs(Ps)),label='PC(s)') 
+        gain_min = np.min(20*np.log10(np.abs(Ps)/5))
+        gain_max = np.max(20*np.log10(np.abs(Ps)*5))
+        ax_gain.set_xlim([np.min(omega), np.max(omega)])
+        ax_gain.set_ylim([gain_min, gain_max])
+        ax_gain.set_ylabel('Amplitude |PC| [db]')
+        ax_gain.set_title('Bode plot of PC')
+        ax_gain.legend(loc='best')
+    
+        # Phase part
+        ax_phase.semilogx(omega, (180/np.pi)*np.unwrap(np.angle(Ps)),label='PC(s)')  
+        ax_phase.set_xlim([np.min(omega), np.max(omega)])
+        ph_min = np.min((180/np.pi)*np.unwrap(np.angle(Ps))) - 10
+        ph_max = np.max((180/np.pi)*np.unwrap(np.angle(Ps))) + 10
+        ax_phase.set_ylim([np.max([ph_min, -200]), ph_max])
+        ax_phase.set_ylabel(r'Phase $\angle PC$ [°]')
+        ax_phase.legend(loc='best')
+    else:
+        return Ps
+
+    
+def Margin(P,C,omega,Show = True):
+    Ps = bodePC(P,C,omega,Show=False)
+    
+    
+    if Show == True:
+    
+        fig, (ax_gain, ax_phase) = plt.subplots(2,1)
+        fig.set_figheight(12)
+        fig.set_figwidth(22)
+
+        # Gain part
+        ax_gain.semilogx(omega,20*np.log10(np.abs(Ps)),label='PC(s)')
+        ax_gain.plot(omega,np.zeros_like(omega))
+        gain_min = np.min(20*np.log10(np.abs(Ps)/5))
+        gain_max = np.max(20*np.log10(np.abs(Ps)*5))
+        ax_gain.set_xlim([np.min(omega), np.max(omega)])
+        ax_gain.set_ylim([gain_min, gain_max])
+        ax_gain.set_ylabel('Amplitude |PC| [db]')
+        ax_gain.set_title('Bode plot of PC')
+        ax_gain.legend(loc='best')
+    
+        # Phase part
+        ax_phase.semilogx(omega, (180/np.pi)*np.unwrap(np.angle(Ps)),label='PC(s)')  
+        ax_phase.set_xlim([np.min(omega), np.max(omega)])
+        ax_phase.plot(omega,-180*np.ones_like(omega))
+        ph_min = np.min((180/np.pi)*np.unwrap(np.angle(Ps))) - 10
+        ph_max = np.max((180/np.pi)*np.unwrap(np.angle(Ps))) + 10
+        ax_phase.set_ylim([np.max([ph_min, -200]), ph_max])
+        ax_phase.set_ylabel(r'Phase $\angle PC$ [°]')
+        ax_phase.legend(loc='best')
+    else:
+        return Ps
+    
     
 class PID:
     
