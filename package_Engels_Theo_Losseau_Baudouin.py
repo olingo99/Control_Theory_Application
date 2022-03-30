@@ -99,17 +99,17 @@ def FF_RT(DV,DV0,Tlead1,Tlag1,Tlead2,Tlag2,Theta1,Theta2,Kp,Kd,Ts,MVFF,PV1,PV2):
     Delay_RT(PV2,max(0,Theta2-Theta1),Ts,MVFF)
 
     
-def sim_tclabP(MV,PV,Ts,PVtemp1,PVtemp2):
+def sim_tclabP(MV,PV,Ts,PVtemp1,PVtemp2,Kp,T1,T2,Theta):
     
-    FO_RT(MV,0.395,47.83,Ts,PVtemp1)
-    FO_RT(PVtemp1,1,17.39,Ts,PVtemp2)
-    Delay_RT(PVtemp2,9.3138,Ts,PV)
+    FO_RT(MV,Kp,T1,Ts,PVtemp1)
+    FO_RT(PVtemp1,1,T2,Ts,PVtemp2)
+    Delay_RT(PVtemp2,Theta,Ts,PV)
     
-def sim_tclabD(MV,PV,Ts,DV0,DVtemp1,DVtemp2):
+def sim_tclabD(MV,PV,Ts,DV0,DVtemp1,DVtemp2,Kd,T1,T2,Theta):
 
-    FO_RT(MV,0.6347,245.357,Ts,DVtemp1)
-    FO_RT(DVtemp1,1,3.133,Ts,DVtemp2)
-    Delay_RT(DVtemp2,0.559,Ts,PV)
+    FO_RT(MV,Kd,T1,Ts,DVtemp1)
+    FO_RT(DVtemp1,1,T2,Ts,DVtemp2)
+    Delay_RT(DVtemp2,Theta,Ts,PV)
     
     
 def IMC_Tuning_SOPDT(Kp,T1,T2,theta,gamma):
