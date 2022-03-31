@@ -11,10 +11,14 @@ def Lead_Lag_Discreet_RT(MV,PV,Tlead,Tlag,Ts,Kp=1,method='EBD',PVInit = 0):
     else: # MV[k+1] is MV[-1] and MV[k] is MV[-2]
         if method == 'EBD':
             PV.append((1/(1+K))*PV[-1] + (K*Kp/(1+K))*((1+(Tlead/Ts))*MV[-1]-(Tlead/Ts)*MV[-2]))
-        # elif method == 'EFD':
-        #     PV.append((1-K)*PV[-1] + K*Kp*MV[-2])
-        # elif method == 'TRAP':
-        #     PV.append((1/(2*T+Ts))*((2*T-Ts)*PV[-1] + Kp*Ts*(MV[-1] + MV[-2])))            
+        elif method == 'EFD':
+            PV.append((1-K)*PV[-1]+Kp*K*((Tlead/Ts)*MV[-1]+(1-(Tlead/Ts))*MV[-2]))
+        elif method == 'TRAP':
+            a = 1+((2*Tlead)/Ts)
+            b = 1-2*Tlead/Ts
+            c = 2+K
+            d = -2+K
+            PV.append(((Kp*K)/c)*(a*MV[-1]+b*MV[-2])-(d/c)*PV[-1])            
         # else:
         #     PV.append((1/(1+K))*PV[-1] + (K*Kp/(1+K))*MV[-1])
             
