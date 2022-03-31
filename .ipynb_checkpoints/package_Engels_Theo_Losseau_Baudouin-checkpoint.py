@@ -86,25 +86,39 @@ def Run_LL(Tlead,Tlag,TSim,method):
     plt.xlim([0, TSim])
     return 
             
-def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha = 0.4,ManFF=False,PVInit = 0,method = "EBD-EBD"):
+def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha = 0.4,ManFF=False,FF = True,PVInit = 0):
     
     """
     The function "PID_RT" needs to be included in a "for or while loop".
     
-    :MV: input vector
-    :MV: input vector
-    :Kp: process gain
-    :Tlead: lead time constant [s]
-    :Tlag: lag time constant [s]
-    :Ts: sampling period [s]
-    :PV: output vector
-    :PVInit: (optional: default value is 0)
-    :method: discretisation method (optional: default value is 'EBD')
-        EBD: Euler Backward difference
-        EFD: Euler Forward difference
-        TRAP: Trapezoïdal method
+    Inputs:
+    :SP: SetPoint vector
+    :PV: Precess Value vector
+    :Man: Manual vector
+    :MVMan: Manual value vector
+    :MVFF: FeedForward vector (ouput of FF_RT)
     
-    The function "PID_RT" appends a value to the output vector "PV".
+    Parameters:
+    :Kc: Controller gain
+    :Ti: integral time constant [s]
+    :Td: derivative time constant [s]
+    :Ts: sampling period [s]
+    :MVMin: Minimum value for MV (used for saturation and anti wind-up)
+    :MVMax: Maxomum value for MV (used for saturation and anti wind-up)
+    :alpha: Tfd = alpha*Td where Tfd is the derivative filter time constant [s]
+    :FF: boolean value, activates or deactivates the feedforward, default value is true
+    :ManFF: boolean value, activates the feedforward in manual mode, default value is false. FF needs to be True for ManFF to have an impact.
+        
+    Outputs:
+    :MV: Manipulated value vector
+    :MVP: Proportional part of manipulated value vector
+    :MVI: Integral part of manipulated value vector
+    :MVD: Derivative part of manipulated value vector
+    :E: Control error vector
+    
+    
+    The function "PID_RT" appends values to MV, MVP, MVD, MVI and E.
+    The values are based on the PID algorithm, the controller mode and feedforward
     The appended value is obtained from a recurrent equation that depends on the discretisation method.
     """
     
@@ -132,48 +146,101 @@ def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha =
         MVI[-1] = MVMin-MVP[-1]-MVD[-1]
     if Man[-1]:
         MVI[-1] = MVMan[-1]-MVP[-1]
-    if Man[-1] and ManFF:
+    if Man[-1] and FF and ManFF:
         if MVMan[-1]-MVFF[-1]>MVMin and MVMan[-1]-MVFF[-1]<MVMax:
             MV.append(MVMan[-1]-MVFF[-1])
         elif MVMan[-1]-MVFF[-1]<MVMin:
             MV.append(MVMin)
         else:
             MV.append(MVMax)
-    elif Man[-1] and not(ManFF):
+    elif (Man[-1] and not(FF)) or (Man[-1] and not(ManFF)):
         MV.append(MVMan[-1])
-    elif ManFF:
+    elif FF:
         if MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1]>=MVMin and MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1]<=MVMax:
             MV.append(MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1])
         elif MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1]<MVMin:
             MV.append(MVMin)
         elif MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1]>MVMax:
             MV.append(MVMax)
-        
     else:
         MV.append(MVP[-1]+MVI[-1]+MVD[-1])        
         
         
-def FF_RT(DV,DV0,Tlead1,Tlag1,Tlead2,Tlag2,Theta1,Theta2,Kp,Kd,Ts,MVFF,PV1,PV2):
-    #New_DV = [x-DV0 for x in DV]
+def FF_RT(DV,Tlead1,Tlag1,Tlead2,Tlag2,Theta1,Theta2,Kp,Kd,Ts,MVFF,PV1,PV2):
+    
+    """
+    The function "FF_RT" needs to be included in a "for or while loop".
+    
+    :DV: input vector
+    :Tlead1: First lead time constant [s]
+    :Tlag1: First lag time constant [s]
+    :Tlead2: Second lead time constant [s]
+    :Tlag2: Second lag time constant [s]
+    :Theta1: First Process delay
+    :Theta2: Seconde Process delay
+    :Kp: First process gain
+    :Kd: Second process gain
+    
+    :Ts: sampling period [s]
+    :MVFF: output vector
+    :PV1: Transision vector needs to be empty at start of loop
+    :PV2: Transision vector needs to be empty at start of loop
+    
+    The function "FF_RT" appends a value to the output vector "MVFF".
+    The appended value is obtained through 2 lead_lag (Lead_Lag_Discreet_RT) and a delay (Delay_RT).
+    """
     Lead_Lag_Discreet_RT(DV,PV1,Tlead1,Tlag1,Ts,Kp=(Kd/Kp))
     Lead_Lag_Discreet_RT(PV1,PV2,Tlead2,Tlag2,Ts)
     Delay_RT(PV2,max(0,Theta2-Theta1),Ts,MVFF)
 
     
 def sim_tclabP(MV,PV,Ts,PVtemp1,PVtemp2,Kp,T1,T2,Theta):
+    """
+    The function "sim_tclabP" needs to be included in a "for or while loop".
+    
+    :MV: input vector
+    :Ts: sampling period [s]
+    :Kp: Process gain
+    :T1: First Time constant [s]
+    :T2: Second Time constant [s]
+    :Theta: Delay time [s]
+    
+    
+    :PV: output vector
+    :PVtemp1: Transision vector needs to be empty at start of loop
+    :PVtemp2: Transision vector needs to be empty at start of loop
+    
+    The function "sim_tclabP" appends a value to the output vector "PV".
+    The appended value is obtained through 2 first order systems (FO_RT) and a delay (Delay_RT).
+    """
     
     FO_RT(MV,Kp,T1,Ts,PVtemp1)
     FO_RT(PVtemp1,1,T2,Ts,PVtemp2)
     Delay_RT(PVtemp2,Theta,Ts,PV)
     
-def sim_tclabD(MV,PV,Ts,DV0,DVtemp1,DVtemp2,Kd,T1,T2,Theta):
+# def sim_tclabD(MV,PV,Ts,DVtemp1,DVtemp2,Kd,T1,T2,Theta):
 
-    FO_RT(MV,Kd,T1,Ts,DVtemp1)
-    FO_RT(DVtemp1,1,T2,Ts,DVtemp2)
-    Delay_RT(DVtemp2,Theta,Ts,PV)
+#     FO_RT(MV,Kd,T1,Ts,DVtemp1)
+#     FO_RT(DVtemp1,1,T2,Ts,DVtemp2)
+#     Delay_RT(DVtemp2,Theta,Ts,PV)
     
     
 def IMC_Tuning_SOPDT(Kp,T1,T2,theta,gamma):
+    """
+    The function "sim_tclabP" does NOT need to be included in a "for or while loop".
+    
+    :Kp: Process gain
+    :T1: First Time constant [s]
+    :T2: Second Time constant [s]
+    :Theta: Delay time [s]
+    :gamma: Tclp = gamma*T1 Tclp is the desired closed-loop time constant
+    
+    The function "IMC_Tuning_SOPDT" return a tuple containing values for Kc, Ti and Td obtained from the formuilas given in row I of the IMC table with T3 = 0.
+    
+    :Kc: Controller gain
+    :Ti: Integration time constant
+    :Td: Derivative time constant
+    """
     Tclp=gamma * T1
     Kc=Kp*((T1+T2)/(Tclp+theta))
     Ti=(T1+T2)
@@ -181,13 +248,23 @@ def IMC_Tuning_SOPDT(Kp,T1,T2,theta,gamma):
     return (Kc,Ti,Td)
 
 
-def margins(P,C):
-    omega = np.logspace(-2, 2, 10000)
-    PC = Bode(P,omega,Show = False)*Bode(C,omega,Show = False)
-    Bode(PC,omega)
+# def margins(P,C):
+#     omega = np.logspace(-2, 2, 10000)
+#     PC = Bode(P,omega,Show = False)*Bode(C,omega,Show = False)
+#     Bode(PC,omega)
 
 
 def bodePID(C,omega,Show = True):
+    """
+    :C: Controller as defined by the class "PID".     
+        
+    :omega: frequency vector (rad/s); generated by a command of the type "omega = np.logspace(-2, 2, 10000)".
+    :Show: boolean value (optional: default value = True). If Show = True, the Bode diagram is shown. Otherwise Cs (C(j omega)) (vector of complex numbers) is returned.
+    
+    The function "bodePID" generates the Bode diagram of the controller C.
+    
+    This function is based on the "Bode" function found in package_DBR.py.
+    """ 
     s = 1j*omega
     
     PGain = C.parameters['Kc']*np.ones_like(s)
@@ -225,6 +302,17 @@ def bodePID(C,omega,Show = True):
     
     
 def bodePC(P,C,omega,Show = True):
+    """
+    :P: Process as defined by the class "Process"
+    :C: Controller as defined by the class "PID".     
+        
+    :omega: frequency vector (rad/s); generated by a command of the type "omega = np.logspace(-2, 2, 10000)".
+    :Show: boolean value (optional: default value = True). If Show = True, the Bode diagram is shown. Otherwise Ls (L(j omega)) (vector of complex numbers) is returned where L(s) = P(s)*C(s).
+    
+    The function "bodePID" generates the Bode diagram of the controller C.
+    
+    This function is based on the "Bode" function found in package_DBR.py.
+    """ 
     Ps = np.multiply(Bode(P,omega,Show = False),bodePID(C,omega,Show = False))
     if Show == True:
     
@@ -256,12 +344,31 @@ def bodePC(P,C,omega,Show = True):
     
     
 def find_nearest_index(array, value):
+    """
+    :array: array in wich we wish to find the value
+    :value: value to find in array
+    
+    Find the index of the value in array closest to value
+    """
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return idx    
     
     
 def Margin(P,C,omega,Show = True):
+    """
+    :P: Process as defined by the class "Process"
+    :C: Controller as defined by the class "PID".     
+        
+    :omega: frequency vector (rad/s); generated by a command of the type "omega = np.logspace(-2, 2, 10000)".
+    :Show: boolean value (optional: default value = True). If Show = True, the Bode diagram is shown. Otherwise the values of the margins are returned
+    
+    The function "Margin" generates the Bode diagram of L(s)=P(s)*C(s) and shows the phase and gain margins.
+    
+    This function is based on the "Bode" function found in package_DBR.py.
+    """ 
+
+    
     Ps = bodePC(P,C,omega,Show=False)
     
     
@@ -303,23 +410,36 @@ def Margin(P,C,omega,Show = True):
         ax_phase.set_ylim([np.max([ph_min, -200]), ph_max])
         ax_phase.set_ylabel(r'Phase $\angle PC$ [°]')
         ax_phase.legend(loc='best')
-        
-        
-        
-        print(GainMargin)
-        print(PhaseMargin)
     else:
         return GainMargin,PhaseMargin
     
 
     
     
-def Run_PID_Interactive(gamma,alpha,Kp,Kd,Tlead1,Tlag1,Tlead2,Tlag2,Theta1,Theta2,DV0,MV0,PV0):
+def Run_PID_Interactive(gamma,alpha,Kp,Kd,Tlead1,Tlag1,Tlead2,Tlag2,Theta1,Theta2,DV0,MV0,PV0, ManFF, FF):
+     """
+    The Run_PID_Interactive function needs to be used in a interactive function from ipywidgets.
+    
+    Parameters:
+    :Kp: Process gain
+    :Kd: Disturbance process gain
+    :Tlead1: First lead time constant [s]
+    :Tlag1: First lag time constant [s]
+    :Tlead2: Second lead time constant [s]
+    :Tlag2: Second lag time constant [s]
+    :Theta1: Process delay
+    :Theta2: Disturbance process delay
+    :DV0: working point of DV
+    :MV0: working point of MV
+    :PV0: Value of PV after sabilisation at MV = MV0 and DV = DV0
+     
+    The function "Run_PID_Interactive" displays graphs of a PID controller calculated using the 'PID_RT' function.
+    """
     
     SPPath = {0: 70,2000:80,2600:65}
-    ManPath = {0:1,500:0}
+    ManPath = {0:1,1000:0}
     MVManPath={0:50}
-    DVPath = {0:50,1000:70,2000:60}
+    DVPath = {0:50,500:70,1500:60,2000:50}
     
     satMin = 0
     satMax = 100
@@ -361,10 +481,10 @@ def Run_PID_Interactive(gamma,alpha,Kp,Kd,Tlead1,Tlag1,Tlead2,Tlag2,Theta1,Theta
         DV[-1]-=DV0
 
 
-        FF_RT(DV,DV0,Tlead1,Tlag1,Tlead2,Tlag2,Theta1,Theta2,Kp,Kd,Ts,MVFF,FFtemp1,FFtemp2)
-        PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,satMin,satMax,MV,MVP,MVI,MVD,E,alpha=alpha,ManFF = 1)
+        FF_RT(DV,Tlead1,Tlag1,Tlead2,Tlag2,Theta1,Theta2,Kp,Kd,Ts,MVFF,FFtemp1,FFtemp2)
+        PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,satMin,satMax,MV,MVP,MVI,MVD,E,alpha=alpha,FF = FF,ManFF = ManFF)
         sim_tclabP(MV,OPV,Ts,PVtemp1,PVtemp2,Kp,Tlead1,Tlead2,Theta1)
-        sim_tclabD(DV,ODV,Ts,DV0,DVtemp1,DVtemp2,Kd,Tlag1,Tlag2,Theta2)
+        sim_tclabP(DV,ODV,Ts,DVtemp1,DVtemp2,Kd,Tlag1,Tlag2,Theta2)
         PV.append(OPV[-1]+ODV[-1]+PV0-Kp*MV0)
     
     fig,(ax,bx,cx,dx) = plt.subplots(4)
