@@ -133,11 +133,22 @@ def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha =
     if Man[-1]:
         MVI[-1] = MVMan[-1]-MVP[-1]
     if Man[-1] and ManFF:
-        MV.append(MVMan[-1]-MVFF[-1])
+        if MVMan[-1]-MVFF[-1]>MVMin and MVMan[-1]-MVFF[-1]<MVMax:
+            MV.append(MVMan[-1]-MVFF[-1])
+        elif MVMan[-1]-MVFF[-1]<MVMin:
+            MV.append(MVMin)
+        else:
+            MV.append(MVMax)
     elif Man[-1] and not(ManFF):
         MV.append(MVMan[-1])
     elif ManFF:
-        MV.append(MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1])
+        if MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1]>=MVMin and MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1]<=MVMax:
+            MV.append(MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1])
+        elif MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1]<MVMin:
+            MV.append(MVMin)
+        elif MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1]>MVMax:
+            MV.append(MVMax)
+        
     else:
         MV.append(MVP[-1]+MVI[-1]+MVD[-1])        
         
@@ -262,6 +273,7 @@ def Margin(P,C,omega,Show = True):
     
     
     GainMargin = np.abs(PsGain[find_nearest_index(PsPhase,-180)])
+    GainMargin = 10**(GainMargin/20)
     PhaseMargin = 180+PsPhase[find_nearest_index(PsGain,0)]
     if Show == True:
     
@@ -300,6 +312,80 @@ def Margin(P,C,omega,Show = True):
         return GainMargin,PhaseMargin
     
 
+    
+    
+def Run_PID_Interactive(gamma,alpha,Kp,Kd,Tlead1,Tlag1,Tlead2,Tlag2,Theta1,Theta2,DV0,MV0,PV0):
+    
+    SPPath = {0: 70,2000:80,2600:65}
+    ManPath = {0:1,500:0}
+    MVManPath={0:50}
+    DVPath = {0:50,1000:70,2000:60}
+    
+    satMin = 0
+    satMax = 100
+    PVInit = 50
+    
+    
+    TSim = 3000
+    Ts = 1
+    N = int(TSim/Ts) + 1
+    t = []
+    MV = []
+    MVMan = []
+    Man = []
+    PV = []
+    SP = []
+    MVP = []
+    MVI = []
+    MVD = []
+    E = []
+    Et = []
+    MVFF = []
+    ODV = []
+    OPV = []
+    DV = []
+    PVtemp1 = []
+    PVtemp2 = []
+    DVtemp1 = []
+    DVtemp2 = []
+
+    FFtemp1 = []
+    FFtemp2 = []
+    Kc,Ti,Td = IMC_Tuning_SOPDT(Kp,Tlead1,Tlead2,Theta1,gamma)
+    for i in range(0,N):
+        t.append(i*Ts)
+        SelectPath_RT(SPPath,t,SP)
+        SelectPath_RT(DVPath,t,DV)
+        SelectPath_RT(ManPath,t,Man)
+        SelectPath_RT(MVManPath,t,MVMan)
+        DV[-1]-=DV0
+
+
+        FF_RT(DV,DV0,Tlead1,Tlag1,Tlead2,Tlag2,Theta1,Theta2,Kp,Kd,Ts,MVFF,FFtemp1,FFtemp2)
+        PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,satMin,satMax,MV,MVP,MVI,MVD,E,alpha=alpha,ManFF = 1)
+        sim_tclabP(MV,OPV,Ts,PVtemp1,PVtemp2,Kp,Tlead1,Tlead2,Theta1)
+        sim_tclabD(DV,ODV,Ts,DV0,DVtemp1,DVtemp2,Kd,Tlag1,Tlag2,Theta2)
+        PV.append(OPV[-1]+ODV[-1]+PV0-Kp*MV0)
+    
+    fig,(ax,bx,cx,dx) = plt.subplots(4)
+    fig.set_figheight(16)
+    fig.set_figwidth(22)
+    
+    ax.plot(t,Man,'black')
+    ax.set(ylabel='Value of MAN')
+
+    bx.plot(t,MV,'blue',label = "MV")
+    bx.set(ylabel='Value of MV')
+
+    cx.plot(t,PV[:-1],'green',label="PV")
+    cx.plot(t,SP,'black',label = "SP")
+    cx.set(ylabel='Value of PV and SP')
+    cx.legend(loc='best')
+
+
+    dx.plot(t,DV,'red')
+    dx.set(ylabel='Value of DV')
+    return
     
     
 class PID:
