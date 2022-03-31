@@ -2,9 +2,30 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 from IPython.display import display, clear_output
-from package_DBR import Delay_RT,FO_RT, Bode, Process
+from package_DBR import Delay_RT,FO_RT, Bode, Process, SelectPath_RT
 
 def Lead_Lag_Discreet_RT(MV,PV,Tlead,Tlag,Ts,Kp=1,method='EBD',PVInit = 0):
+    
+    """
+    The function "Lead_Lag_Discreet_RT" needs to be included in a "for or while loop".
+    
+    :MV: input vector
+    :Kp: process gain, (optional: default value is 1)
+    :Tlead: lead time constant [s]
+    :Tlag: lag time constant [s]
+    :Ts: sampling period [s]
+    :PV: output vector
+    :PVInit: (optional: default value is 0)
+    :method: discretisation method (optional: default value is 'EBD')
+        EBD: Euler Backward difference
+        EFD: Euler Forward difference
+        TRAP: Trapezoïdal method
+    
+    The function "Lead_Lag_Discreet_RT" appends a value to the output vector "PV".
+    The appended value is obtained from a recurrent equation that depends on the discretisation method.
+    """
+    
+    
     K = Ts/Tlag
     if len(PV) == 0:
            PV.append(PVInit)
@@ -19,50 +40,75 @@ def Lead_Lag_Discreet_RT(MV,PV,Tlead,Tlag,Ts,Kp=1,method='EBD',PVInit = 0):
             c = 2+K
             d = -2+K
             PV.append(((Kp*K)/c)*(a*MV[-1]+b*MV[-2])-(d/c)*PV[-1])            
-        # else:
-        #     PV.append((1/(1+K))*PV[-1] + (K*Kp/(1+K))*MV[-1])
+    return
             
-# def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha = 0.4,ManFF=False,PVInit = 0,method = "EBD-EBD"):
-#     Tfd = alpha*Td
+def Run_LL(Tlead,Tlag,TSim,method):
     
-#     if len(MVI) == 0 or len(MVD)==0 or len(MVP)==0:
-#         if len(MVI) == 0:    
-#             MVI.append(PVInit)  # metter a 0 seulememnt si ca marche pas
-#         if len(MVD) == 0:
-#             MVD.append(PVInit)
-#         if len(MVP) == 0:
-#             MVP.append(PVInit)
-#         #print("ici")
-#     else:
-#         #print("la")
-#         e  = (SP[-1]-PV[-1])
-#         E.append(e)
-#         temp_mvp = Kc*e
-#         MVP.append(temp_mvp)
-#         temp_mvi = MVI[-1]+Kc*(Ts/Ti)*e
-#         temp_mvd = (Tfd/(Tfd+Ts))*MVD[-1]+(Kc*Td/(Tfd+Ts))*(e-E[-2])
-#         #print(MVD[-1])
-#         #print(e)
-#         #print(E[-1])
-#         MVD.append(temp_mvd)
-#         if temp_mvp+temp_mvi+temp_mvd>MVMax:  
-#             MVI.append(MVMax-temp_mvp-temp_mvd)
-#         elif temp_mvp+temp_mvi+temp_mvd<MVMin:
-#             MVI.append(MVMin-temp_mvp-temp_mvd)
-#         else:
-#             MVI.append(temp_mvi)
-#         if Man[-1] and ManFF:
-#             MV.append(MVMan[-1]-MVFF[-1])
-#         elif Man[-1] and not(ManFF):
-#             MV.append(MVMan[-1])
-#         elif ManFF:
-#             MV.append(MVP[-1]+MVI[-1]+MVD[-1]-MVFF[-1])
-#         else:
-#              MV.append(MVP[-1]+MVI[-1]+MVD[-1])
-        
-        
+    """
+    The function "Lead_Lag_Discreet_RT" is designed to be used in an interactive widget.
+    
+    :Tlead: lead time constant [s]
+    :Tlag: lag time constant [s]
+    :TSim: Total time of simulation, set small value to zoom and see the difference between methods
+    :method: discretisation method (optional: default value is 'EBD')
+        EBD: Euler Backward difference
+        EFD: Euler Forward difference
+        TRAP: Trapezoïdal method
+    
+    Uses Lead_Lag_Discreet_RT to display MV and PV with default values for Ts and MV.
+    
+    
+    :MV: input vector used in Lead_Lag_Discreet_RT = {0: 0, 2: -1,12:2,22:3}
+    :Ts: sampling period [s] = 0.1
+    """
+    
+    
+    Ts = 0.1
+    N = int(TSim/Ts) + 1
+    MVPath = {0: 0, 2: -1,12:2,22:3}
+    t = []
+    MV = []
+    PV = []
 
+
+    for i in range(0,N):
+        t.append(i*Ts)
+        SelectPath_RT(MVPath,t,MV)
+        Lead_Lag_Discreet_RT(MV,PV,Tlead,Tlag,Ts, method = method)
+            
+    plt.figure(figsize = (15,9))
+
+    plt.step(t,MV,'b-',label='MV',where='post')
+    plt.step(t,PV,'skyblue',label='PV',where='post')
+    plt.ylabel('Value of MV')
+    plt.legend(loc='best')
+    plt.title('Path response')
+    plt.xlim([0, TSim])
+    return 
+            
 def PID_RT(SP,PV,Man,MVMan,MVFF,Kc,Ti,Td,Ts,MVMin,MVMax,MV,MVP,MVI,MVD,E,alpha = 0.4,ManFF=False,PVInit = 0,method = "EBD-EBD"):
+    
+    """
+    The function "PID_RT" needs to be included in a "for or while loop".
+    
+    :MV: input vector
+    :MV: input vector
+    :Kp: process gain
+    :Tlead: lead time constant [s]
+    :Tlag: lag time constant [s]
+    :Ts: sampling period [s]
+    :PV: output vector
+    :PVInit: (optional: default value is 0)
+    :method: discretisation method (optional: default value is 'EBD')
+        EBD: Euler Backward difference
+        EFD: Euler Forward difference
+        TRAP: Trapezoïdal method
+    
+    The function "PID_RT" appends a value to the output vector "PV".
+    The appended value is obtained from a recurrent equation that depends on the discretisation method.
+    """
+    
+    
     Tfd = alpha*Td
     
     if len(PV) == 0:
